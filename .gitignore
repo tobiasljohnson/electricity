@@ -1,0 +1,14 @@
+# private / large data: never commit
+usage.csv
+LDS_APPND.csv
+filtered.csv
+bills.csv
+*.json
+!data/*.json
+# misc
+old/
+__pycache__/
+.ipynb_checkpoints/
+.venv/
+.DS_Store
+electric-tariff.pdf
