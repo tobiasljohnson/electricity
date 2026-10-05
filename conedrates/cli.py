@@ -5,16 +5,18 @@ import datetime as dt
 import json
 from pathlib import Path
 
-from .engine import PLAN_NAMES, PLANS, calendar_months, run
-from .loaders import load_msc, load_tariff, load_usage
+from .engine import PLAN_NAMES, PLANS, Period, calendar_months, run
+from .loaders import load_common, load_msc, load_tariff, load_usage
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
 def read_bills(path):
-    """CSV with columns from,to (YYYY-MM-DD); `to` is exclusive (TO - FROM = days)."""
+    """CSV with columns from,to (YYYY-MM-DD): the dates printed on the bill
+    (meter-read dates). See Period.from_bill for how they map to usage."""
     with open(path, newline="") as f:
-        return [(dt.date.fromisoformat(r["from"]), dt.date.fromisoformat(r["to"])) for r in csv.DictReader(f)]
+        return [Period.from_bill(dt.date.fromisoformat(r["from"]), dt.date.fromisoformat(r["to"]))
+                for r in csv.DictReader(f)]
 
 
 def main(argv=None):
@@ -25,8 +27,9 @@ def main(argv=None):
     p.add_argument("--zone", default="J")
     p.add_argument("--tension", default="low", choices=["low", "high"])
     p.add_argument("--bills", help="CSV of actual bill periods (columns: from,to)")
-    p.add_argument("--common-kwh", type=float, default=0.0, help="common per-kWh charges, $/kWh")
-    p.add_argument("--grt", type=float, default=0.0, help="gross receipts tax, percent")
+    p.add_argument("--common", default=ROOT / "data" / "common_charges.toml",
+                   help="adjustments, SBC, MFC and tax factors (default: data/common_charges.toml)")
+    p.add_argument("--no-common", action="store_true", help="tariff + MSC only, no adjustments or taxes")
     p.add_argument("--out", help="write full itemized JSON here")
     a = p.parse_args(argv)
 
@@ -37,7 +40,8 @@ def main(argv=None):
         periods = read_bills(a.bills)
     else:
         periods = calendar_months(usage.kwh.index.min().date(), usage.kwh.index.max().date())
-    res = run(usage, periods, tariff, msc, a.common_kwh, a.grt)
+    common = None if a.no_common else load_common(a.common)
+    res = run(usage, periods, tariff, msc, common)
 
     if a.out:
         Path(a.out).write_text(json.dumps(res, indent=2, default=str))

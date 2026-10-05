@@ -109,7 +109,7 @@ class BillReproduction(unittest.TestCase):
         g = pd.date_range(s, e, freq="15min", inclusive="left")
         u = usage_from(g, 308 / len(g))
         msc = load_msc(ROOT / "LDS_APPND.csv")
-        r = price_period(u, s, e, load_tariff(ROOT / "data" / "tariff.toml"), msc)
+        r = price_period(u, (s, e), load_tariff(ROOT / "data" / "tariff.toml"), msc)
         items = {i["component"].split("] ")[-1]: i for i in r["plans"]["sc1_rate1"]["items"]}
         self.assertAlmostEqual(items["customer_charge"]["amount"], 22.40)
         self.assertAlmostEqual(items["billing_payment_processing"]["amount"], 1.80)

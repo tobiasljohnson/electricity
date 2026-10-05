@@ -3,6 +3,7 @@ usage.csv
 LDS_APPND.csv
 filtered.csv
 bills.csv
+bills/
 *.json
 !data/*.json
 # misc

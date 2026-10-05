@@ -124,3 +124,27 @@ def tariff_entry(tariff, plan, on):
 
 def effective_dates(tariff, plan):
     return sorted(e["effective"] for e in tariff[plan])
+
+
+# ---------- common charges (adjustments, SBC, MFC, GRT, sales tax) ----------
+
+COMMON_MATCH_DAYS = 15
+COMMON_FIELDS = ("delivery_adj_c", "sbc_c", "supply_adj_c", "mfc_c", "grt_delivery_pct", "grt_supply_pct")
+
+
+def load_common(path):
+    """data/common_charges.toml: [global] sales_tax_pct, [default] estimate, and
+    one [[period]] per bill cycle the factors were measured from."""
+    with open(path, "rb") as f:
+        return tomllib.load(f)
+
+
+def select_common(common, start, end):
+    """Factors for the period whose FROM is nearest `start` (within 15 days).
+    Returns (dict with sales_tax_pct included, estimated) where `estimated` is
+    True when no bill-based entry is near and the [default] block is used."""
+    g = common["global"]
+    best = min(common.get("period", []), key=lambda p: abs((p["from"] - start).days), default=None)
+    if best is not None and abs((best["from"] - start).days) <= COMMON_MATCH_DAYS:
+        return {**best, "sales_tax_pct": g["sales_tax_pct"]}, False
+    return {**common["default"], "sales_tax_pct": g["sales_tax_pct"]}, True
