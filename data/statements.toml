@@ -1,0 +1,223 @@
+# Con Edison statements (PSC No. 10) that sit on top of tariff delivery rates and MSC prices.
+# Source: https://dps.ny.gov/electric-tariffs -> Con Edison -> Statements (effective + cancelled lists).
+# To update: ADD entries (effective date, value, stmt = statement number); never edit old ones.
+#
+# Units: $/kWh unless the series says otherwise; unit = "percent" for the tax series.
+#
+# `rule` says which value applies to a bill (verified against six SC 1 Rate I bills, see SPEC.md):
+#   to_date      - the value in effect on the bill's TO date. The tariff states this for AF-MSC
+#                  (GR 25.2.4) and AF-MAC (GR 26.1.3); the GRT statement says "to-date".
+#   day_weighted - average of the daily value over the bill's usage days. Used for statements that take
+#                  effect on the 1st of a month; a bill spanning a change blends the statements by days.
+#                  (Inferred from bills: it fits all six, including the three that span a change.)
+#
+# `scope`: "all" = every plan, or a comma-separated list of plan keys the series applies to.
+# `group`: which side of the bill the series belongs to (GRT is applied to each side separately).
+
+[meta]
+as_of = 2026-10-07          # statements filed through this date are included
+sales_tax_pct = 4.5         # NYC sales tax on everything incl. GRT. Not a Con Ed statement; measured from bills.
+
+# ---------------- supply side ----------------
+
+[series.afmsc]
+name = "Adjustment Factors - MSC (MSC ADJ), NYC, residential, 'all other customers'"
+rule = "to_date"
+scope = "all"
+group = "supply"
+entries = [
+  { effective = 2026-02-13, value = -0.001879, stmt = 172 },
+  { effective = 2026-03-17, value =  0.018383, stmt = 173 },
+  { effective = 2026-04-11, value =  0.018383, stmt = 174 },   # in effect only 4 days; NYC value unchanged
+  { effective = 2026-04-15, value =  0.067341, stmt = 175 },
+  { effective = 2026-05-14, value =  0.023994, stmt = 176 },
+  { effective = 2026-06-15, value =  0.018522, stmt = 177 },
+  { effective = 2026-07-15, value =  0.017726, stmt = 178 },
+  { effective = 2026-08-13, value = -0.005885, stmt = 179 },
+  { effective = 2026-09-14, value = -0.026229, stmt = 180 },
+]
+
+[series.cess]
+name = "Clean Energy Standard Supply Surcharge (CESS), total"
+rule = "day_weighted"
+scope = "all"
+group = "supply"
+entries = [
+  { effective = 2026-02-01, value = 0.003020, stmt = 11 },   # -0.000156 + 0.002691 + 0 + 0.000485
+  { effective = 2026-04-01, value = 0.005041, stmt = 12 },
+]
+
+[series.mfc]
+name = "Merchant Function Charge, SC 1 total"
+rule = "day_weighted"
+scope = "all"
+group = "supply"
+entries = [
+  { effective = 2026-02-01, value = 0.005553, stmt = 173 },
+  { effective = 2026-03-01, value = 0.006113, stmt = 174 },
+  { effective = 2026-04-01, value = 0.006140, stmt = 175 },
+  { effective = 2026-05-01, value = 0.005053, stmt = 176 },
+  { effective = 2026-06-01, value = 0.005139, stmt = 177 },
+  { effective = 2026-07-01, value = 0.005132, stmt = 178 },
+  { effective = 2026-08-01, value = 0.005393, stmt = 179 },
+  { effective = 2026-09-01, value = 0.006204, stmt = 180 },
+  { effective = 2026-10-01, value = 0.006482, stmt = 181 },
+]
+
+# ---------------- delivery side: per-kWh adders, identical for all plans ----------------
+
+[series.mac]
+name = "Monthly Adjustment Clause (forecast)"
+rule = "day_weighted"
+scope = "all"
+group = "delivery"
+entries = [
+  { effective = 2026-02-01, value =  0.00420, stmt = 169 },
+  { effective = 2026-03-01, value =  0.00813, stmt = 170 },
+  { effective = 2026-04-01, value =  0.01104, stmt = 171 },
+  { effective = 2026-05-01, value =  0.00459, stmt = 172 },
+  { effective = 2026-06-01, value = -0.00071, stmt = 173 },
+  { effective = 2026-07-01, value =  0.00040, stmt = 174 },
+  { effective = 2026-08-01, value =  0.00236, stmt = 175 },
+  { effective = 2026-09-01, value =  0.00422, stmt = 176 },
+  { effective = 2026-10-01, value =  0.00452, stmt = 177 },
+]
+
+[series.afmac]
+name = "Adjustment Factor - MAC (MAC ADJ): reconciliation + uncollectible-bill expense + transition adjustment"
+rule = "to_date"
+scope = "all"
+group = "delivery"
+entries = [
+  { effective = 2026-02-01, value =  0.001360, stmt = 169 },   #  0.001314 + 0.000048 - 0.000002
+  { effective = 2026-02-13, value = -0.005344, stmt = 170 },   # -0.005370 + 0.000028 - 0.000002
+  { effective = 2026-03-17, value =  0.009202, stmt = 171 },   #  0.009231 - 0.000027 - 0.000002
+  { effective = 2026-04-15, value =  0.003569, stmt = 172 },   #  0.003532 + 0.000039 - 0.000002
+  { effective = 2026-05-14, value = -0.000200, stmt = 173 },   # -0.000278 + 0.000080 - 0.000002
+  { effective = 2026-06-15, value = -0.002149, stmt = 174 },   # -0.002230 + 0.000083 - 0.000002
+  { effective = 2026-07-15, value =  0.010430, stmt = 175 },   #  0.010455 - 0.000023 - 0.000002
+  { effective = 2026-08-13, value =  0.004607, stmt = 176 },   #  0.004618 - 0.000009 - 0.000002
+  { effective = 2026-09-14, value =  0.006720, stmt = 177 },   #  0.006636 + 0.000086 - 0.000002
+]
+
+[series.rdm]
+name = "Revenue Decoupling Mechanism Adjustment, SC 1 (six-month periods: Feb-Jul, Aug-Jan)"
+rule = "day_weighted"
+scope = "all"
+group = "delivery"
+entries = [
+  { effective = 2026-02-01, value =  0.00738, stmt = 37 },
+  { effective = 2026-08-01, value = -0.00815, stmt = 38 },
+]
+
+[series.drs]
+name = "Delivery Revenue Surcharge (SDR), SC 1 Rates I-IV and Rider Z"
+rule = "day_weighted"
+scope = "all"
+group = "delivery"
+entries = [
+  { effective = 2026-02-01, value = -0.000112, stmt = 18 },
+]
+
+[series.amp]
+name = "Arrears Management Program Recovery Surcharge, SC 1"
+rule = "day_weighted"
+scope = "all"      # statement lists 'SC 1 - Rates I, II, III and IV'; Rider Z assumed to pay it too (ASSUMPTION)
+group = "delivery"
+entries = [
+  { effective = 2025-05-01, value = 0.0012, stmt = 2 },
+  { effective = 2026-05-01, value = 0.0011, stmt = 3 },
+]
+
+[series.dlm]
+name = "Dynamic Load Management Surcharge, SC 1 total"
+rule = "day_weighted"
+scope = "all"      # as AMP
+group = "delivery"
+entries = [
+  { effective = 2025-05-01, value = 0.0018, stmt = 10 },
+  { effective = 2026-05-01, value = 0.0023, stmt = 11 },
+]
+
+[series.evs]
+name = "Electric Vehicle Make Ready Surcharge, SC 1"
+rule = "day_weighted"
+scope = "all"      # as AMP
+group = "delivery"
+entries = [
+  { effective = 2026-02-01, value = 0.0020, stmt = 7 },
+]
+
+[series.vder]
+name = "VDER Cost Recovery, SC 1 non-standby, NYC delivery charge (sum of components)"
+rule = "day_weighted"
+scope = "all"
+group = "delivery"
+entries = [
+  { effective = 2025-12-01, value = 0.0015, stmt = 12 },   # 0.0003 + 0.0001 + 0.0006 + 0.0001 + 0.0000 + 0.0004
+]
+
+# ---------------- System Benefits Charge (SBC), billed together with CESD ----------------
+
+[series.cesd]
+name = "Clean Energy Standard Delivery Surcharge (CESD); billed inside the SBC line"
+rule = "day_weighted"
+scope = "all"
+group = "delivery"
+entries = [
+  { effective = 2026-02-01, value = 0.000201, stmt = 7 },
+]
+
+[series.sbc_nyserda]
+name = "SBC, NYSERDA part (Clean Energy Fund + I&R + LMI + non-LMI EE/BE), all SCs"
+rule = "day_weighted"
+scope = "all"
+group = "delivery"
+entries = [
+  { effective = 2026-01-01, value = 0.0039, stmt = 17 },
+  { effective = 2026-03-01, value = 0.0039, stmt = 18 },
+]
+
+[series.sbc_company_kwh]
+name = "SBC, company-administered EE/BE part, per kWh: SC 1 Rates I, II, III only"
+rule = "day_weighted"
+scope = "sc1_rate1, sc1_rate3"
+group = "delivery"
+entries = [
+  { effective = 2026-01-01, value = 0.0,    stmt = 17 },
+  { effective = 2026-03-01, value = 0.0039, stmt = 18 },
+]
+
+[series.sbc_company_kw]
+name = "SBC, company-administered EE/BE part, $ per kW of 'monthly maximum demand': SC 1 Rate IV and Rider Z"
+rule = "day_weighted"
+scope = "sc1_rate4, riderz_rate1"
+group = "delivery"
+unit = "$/kW"
+entries = [
+  { effective = 2026-01-01, value = 0.0,  stmt = 17 },
+  { effective = 2026-03-01, value = 0.85, stmt = 18 },
+]
+
+# ---------------- gross receipts tax (percent), City of New York residential ----------------
+
+[series.grt_delivery_pct]
+name = "GRT & other tax surcharges, delivery side, City of New York residential, monthly bills"
+rule = "to_date"
+scope = "all"
+unit = "percent"
+entries = [
+  { effective = 2025-06-03, value = 4.7940, stmt = 31 },
+  { effective = 2026-04-01, value = 4.8562, stmt = 32 },
+  { effective = 2026-06-02, value = 5.1239, stmt = 33 },   # 4.8562 + 0.2677 extra for to-dates Jun 2 - Jul 30 2026
+  { effective = 2026-07-31, value = 4.8562, stmt = 33 },   # the extra ends
+]
+
+[series.grt_supply_pct]
+name = "GRT & other tax surcharges, commodity (supply) side, City of New York residential"
+rule = "to_date"
+scope = "all"
+unit = "percent"
+entries = [
+  { effective = 2025-06-03, value = 2.4066, stmt = 31 },
+]

@@ -6,7 +6,7 @@ import pandas as pd
 
 from .calendar import classify, is_summer
 from .demand import billable_demand
-from .loaders import TariffNotInEffect, effective_dates, select_common, select_msc, tariff_entry
+from .loaders import TariffNotInEffect, effective_dates, select_msc, tariff_entry
 
 PLANS = ("sc1_rate1", "sc1_rate3", "sc1_rate4", "riderz_rate1")
 PLAN_NAMES = {
@@ -16,13 +16,19 @@ PLAN_NAMES = {
     "riderz_rate1": "Rider Z Rate I",
 }
 PRORATION_DAYS = 30
+DEMAND_PLANS = ("sc1_rate4", "riderz_rate1")
+# What "monthly maximum demand" means for the per-kW System Benefits Charge. UNVERIFIED (SPEC open item):
+#   max_billable - the larger of the on-peak and off-peak billable demands
+#   sum_billable - on-peak + off-peak billable demands
+#   peak_window  - the single highest 60-minute demand in the period
+SBC_DEMAND_BASES = ("max_billable", "sum_billable", "peak_window")
 
 
 class Period(NamedTuple):
     """A billing period.
 
     start, end: the usage window, end exclusive (end - start = days billed).
-    msc_start, msc_end: the dates used to look up MSC / common-charge rows,
+    msc_start, msc_end: the dates used to look up MSC rows,
     in the same convention as Con Ed's files (cycle FROM and TO, TO exclusive
     here). They equal start/end for calendar months.
     """
@@ -76,12 +82,22 @@ def _kwh_by(df, mask_col_vals, s, e):
     return df.loc[sel].groupby(mask_col_vals[sel]).kwh.sum()
 
 
-def price_period(usage, period, tariff, msc, common=None):
+def _sbc_demand_kw(dem, basis):
+    if basis == "max_billable":
+        return max(dem["on"]["kw"], dem["off"]["kw"])
+    if basis == "sum_billable":
+        return dem["on"]["kw"] + dem["off"]["kw"]
+    if basis == "peak_window":
+        return max((d["top"][0] for d in dem.values() if d["top"]), default=0.0)
+    raise ValueError(f"unknown SBC demand basis {basis!r}; choose from {SBC_DEMAND_BASES}")
+
+
+def price_period(usage, period, tariff, msc, statements=None, sbc_demand_basis="max_billable"):
     """Price one billing period under all four plans.
 
     `period` is a Period (or a (start, end) tuple, treated as a calendar month).
-    `common` is a CommonCharges (see loaders.load_common) or None for tariff +
-    MSC only.
+    `statements` is a Statements (see statements.load_statements) or None for
+    tariff + MSC only (no adjustments, surcharges or taxes).
     """
     period = Period.coerce(period)
     start, end = period.start, period.end
@@ -123,12 +139,10 @@ def price_period(usage, period, tariff, msc, common=None):
         for n, r in (("rate1", m1), ("rate3", m3), ("rate4", m4))
     }
 
-    cc = None
-    if common is not None:
-        cc, estimated = select_common(common, ms, me)
-        diag["common_charges"] = {"source": "default estimate" if estimated else f"{cc['from']}..{cc['to']}"}
-        if estimated:
-            diag["warnings"].append("no bill-based common charges near this period; using default estimate")
+    if statements is not None and period.end - dt.timedelta(days=1) > statements.as_of:
+        diag["warnings"].append(
+            f"period extends past {statements.as_of}, the last statements on file; later statements are unknown")
+    diag["statements_used"] = {}
 
     dem = billable_demand(
         usage.kwh, lambda idx: classify(idx).demand_period.values,
@@ -186,8 +200,9 @@ def price_period(usage, period, tariff, msc, common=None):
 
         bpp = tariff_entry(tariff, "bpp", start)["amount"]
         items.append(_item("billing_payment_processing", 1, "bill", bpp))
-        if cc is not None:
-            items += _common_items(items, cc, total_kwh)
+        if statements is not None:
+            items += _statement_items(statements, plan, period, items, total_kwh, dem,
+                                      sbc_demand_basis, diag, warns)
         results[plan] = {
             "plan": PLAN_NAMES[plan], "items": items, "warnings": warns,
             "total": sum(i["amount"] for i in items),
@@ -195,30 +210,46 @@ def price_period(usage, period, tariff, msc, common=None):
     return {"diagnostics": diag, "plans": results}
 
 
-def _common_items(items, cc, kwh):
-    """Charges and taxes that sit on top of tariff delivery and MSC supply.
+def _statement_items(st, plan, period, items, kwh, dem, sbc_basis, diag, warns):
+    """Adders, SBC and taxes on top of tariff delivery and MSC supply, from Con Ed statements.
 
-    Modeled on the structure of a real Con Ed bill: delivery side = basic
-    service + delivery + adjustments + System Benefit Charge; supply side =
-    supply + MSC adjustment + Merchant Function Charge. GRT is applied to each
-    side, then sales tax to everything including GRT. Per-kWh adjustments are
-    assumed identical for all four plans (SPEC: unverified for demand plans).
+    Structure of a real bill (verified on six SC 1 Rate I bills): delivery side = basic service +
+    delivery + adjustments + SBC (with CESD); supply side = supply + AF-MSC + CESS + MFC.
+    GRT is applied to each side separately, then sales tax to everything including GRT.
     """
-    cents = lambda c: c / 100
-    out = [
-        _item("common.delivery_adjustments", kwh, "kWh", cents(cc["delivery_adj_c"])),
-        _item("common.system_benefit_charge", kwh, "kWh", cents(cc["sbc_c"])),
-        _item("common.supply_adjustment", kwh, "kWh", cents(cc["supply_adj_c"]), group="supply"),
-        _item("common.merchant_function_charge", kwh, "kWh", cents(cc["mfc_c"]), group="supply"),
-    ]
+    out = []
+
+    def val(key):
+        v, used = st.value(key, period)
+        diag["statements_used"].setdefault(key, used)
+        return v
+
+    for key in st.keys(plan, "delivery"):
+        if key in ("sbc_nyserda", "cesd", "sbc_company_kwh", "sbc_company_kw"):
+            continue
+        out.append(_item(f"adder.{key}", kwh, "kWh", val(key)))
+    for key in st.keys(plan, "supply"):
+        out.append(_item(f"adder.{key}", kwh, "kWh", val(key), group="supply"))
+
+    for key in ("sbc_nyserda", "cesd", "sbc_company_kwh"):
+        if key in st.keys(plan, "delivery"):
+            out.append(_item(f"sbc.{key}", kwh, "kWh", val(key)))
+    if "sbc_company_kw" in st.keys(plan, "delivery"):
+        kw = _sbc_demand_kw(dem, sbc_basis)
+        out.append(_item("sbc.sbc_company_kw", kw, "kW", val("sbc_company_kw")))
+        diag.setdefault("sbc_demand", {"basis": sbc_basis, "kw": kw})
+        w = f"SBC per-kW part uses demand basis '{sbc_basis}': what 'monthly maximum demand' means is unverified"
+        if w not in diag["warnings"]:
+            diag["warnings"].append(w)
+
     side = {"delivery": 0.0, "supply": 0.0}
     for i in items + out:
         side[i["group"]] += i["amount"]
-    grt_d = _item("tax.grt_delivery", side["delivery"], "$", cc["grt_delivery_pct"] / 100)
-    grt_s = _item("tax.grt_supply", side["supply"], "$", cc["grt_supply_pct"] / 100, group="supply")
+    grt_d = _item("tax.grt_delivery", side["delivery"], "$", val("grt_delivery_pct") / 100)
+    grt_s = _item("tax.grt_supply", side["supply"], "$", val("grt_supply_pct") / 100, group="supply")
     out += [grt_d, grt_s]
     taxable = side["delivery"] + side["supply"] + grt_d["amount"] + grt_s["amount"]
-    out.append(_item("tax.sales_tax", taxable, "$", cc["sales_tax_pct"] / 100))
+    out.append(_item("tax.sales_tax", taxable, "$", st.sales_tax_pct / 100))
     return out
 
 
@@ -232,12 +263,12 @@ def calendar_months(first, last):
     return out
 
 
-def run(usage, periods, tariff, msc, common=None):
+def run(usage, periods, tariff, msc, statements=None, sbc_demand_basis="max_billable"):
     """Price each period; periods with no tariff in effect come back as {"skipped": reason}."""
     out = []
     for p in map(Period.coerce, periods):
         try:
-            out.append(price_period(usage, p, tariff, msc, common))
+            out.append(price_period(usage, p, tariff, msc, statements, sbc_demand_basis))
         except TariffNotInEffect as ex:
             out.append({"skipped": str(ex), "start": p.start.isoformat(), "end": p.end.isoformat()})
     return out

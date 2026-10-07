@@ -3,7 +3,7 @@ usage.csv
 LDS_APPND.csv
 filtered.csv
 bills.csv
-bills/
+bills
 *.json
 !data/*.json
 # misc
@@ -13,3 +13,5 @@ __pycache__/
 .venv/
 .DS_Store
 electric-tariff.pdf
+statements
+.claude/

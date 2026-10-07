@@ -6,7 +6,9 @@ import json
 from pathlib import Path
 
 from .engine import PLAN_NAMES, PLANS, Period, calendar_months, run
-from .loaders import load_common, load_msc, load_tariff, load_usage
+from .engine import SBC_DEMAND_BASES
+from .loaders import load_msc, load_tariff, load_usage
+from .statements import load_statements
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -27,9 +29,11 @@ def main(argv=None):
     p.add_argument("--zone", default="J")
     p.add_argument("--tension", default="low", choices=["low", "high"])
     p.add_argument("--bills", help="CSV of actual bill periods (columns: from,to)")
-    p.add_argument("--common", default=ROOT / "data" / "common_charges.toml",
-                   help="adjustments, SBC, MFC and tax factors (default: data/common_charges.toml)")
-    p.add_argument("--no-common", action="store_true", help="tariff + MSC only, no adjustments or taxes")
+    p.add_argument("--statements", default=ROOT / "data" / "statements.toml",
+                   help="Con Ed statements: adjustments, SBC, MFC, taxes (default: data/statements.toml)")
+    p.add_argument("--no-statements", action="store_true", help="tariff + MSC only, no adjustments or taxes")
+    p.add_argument("--sbc-demand", default="max_billable", choices=SBC_DEMAND_BASES,
+                   help="meaning of 'monthly maximum demand' for the per-kW SBC (Rate IV, Rider Z); unverified")
     p.add_argument("--out", help="write full itemized JSON here")
     a = p.parse_args(argv)
 
@@ -40,8 +44,8 @@ def main(argv=None):
         periods = read_bills(a.bills)
     else:
         periods = calendar_months(usage.kwh.index.min().date(), usage.kwh.index.max().date())
-    common = None if a.no_common else load_common(a.common)
-    res = run(usage, periods, tariff, msc, common)
+    statements = None if a.no_statements else load_statements(a.statements)
+    res = run(usage, periods, tariff, msc, statements, a.sbc_demand)
 
     if a.out:
         Path(a.out).write_text(json.dumps(res, indent=2, default=str))
