@@ -3,6 +3,8 @@
 # To update: ADD entries (effective date, value, stmt = statement number); never edit old ones.
 #
 # Units: $/kWh unless the series says otherwise; unit = "percent" for the tax series.
+# NOTE: statements filed before Feb 2026 print amounts in CENTS per kWh; the values here are converted to
+# dollars, with the printed cents in the comment. Use the monthly-bill column, not the bi-monthly one.
 #
 # `rule` says which value applies to a bill (verified against six SC 1 Rate I bills, see SPEC.md):
 #   to_date      - the value in effect on the bill's TO date. The tariff states this for AF-MSC
@@ -21,11 +23,17 @@ sales_tax_pct = 4.5         # NYC sales tax on everything incl. GRT. Not a Con E
 # ---------------- supply side ----------------
 
 [series.afmsc]
-name = "Adjustment Factors - MSC (MSC ADJ), NYC, residential, 'all other customers'"
+name = "Adjustment Factors - MSC (MSC ADJ), NYC, residential, 'all other customers', monthly bills. Before 2026-02-01 = MSC I + MSC II (two tables); from then one table"
 rule = "to_date"
 scope = "all"
 group = "supply"
 entries = [
+  { effective = 2025-09-15, value =  0.008612, stmt = 166 },   # cents: MSC I 0.3775 + MSC II 0.4837 = 0.8612
+  { effective = 2025-10-14, value = -0.003317, stmt = 167 },   # cents: MSC I (0.6214) + MSC II 0.2897
+  { effective = 2025-11-12, value =  0.017161, stmt = 168 },   # cents: MSC I 0.8803 + MSC II 0.8358
+  { effective = 2025-12-15, value =  0.000541, stmt = 169 },   # cents: MSC I 0.1730 + MSC II (0.1189)
+  { effective = 2026-01-14, value = -0.012454, stmt = 170 },   # cents: MSC I (0.4642) + MSC II (0.7812)
+  { effective = 2026-02-01, value = -0.012454, stmt = 171 },   # first single-factor statement (dollars); equals #170's sum
   { effective = 2026-02-13, value = -0.001879, stmt = 172 },
   { effective = 2026-03-17, value =  0.018383, stmt = 173 },
   { effective = 2026-04-11, value =  0.018383, stmt = 174 },   # in effect only 4 days; NYC value unchanged
@@ -43,6 +51,7 @@ rule = "day_weighted"
 scope = "all"
 group = "supply"
 entries = [
+  { effective = 2025-04-01, value = 0.003020, stmt = 10 },   # cents: (0.0156) + 0.2691 + 0 + 0.0485 = 0.3020
   { effective = 2026-02-01, value = 0.003020, stmt = 11 },   # -0.000156 + 0.002691 + 0 + 0.000485
   { effective = 2026-04-01, value = 0.005041, stmt = 12 },
 ]
@@ -53,6 +62,11 @@ rule = "day_weighted"
 scope = "all"
 group = "supply"
 entries = [
+  { effective = 2025-09-01, value = 0.004946, stmt = 168 },   # cents 0.4946
+  { effective = 2025-10-01, value = 0.005414, stmt = 169 },   # cents 0.5414
+  { effective = 2025-11-01, value = 0.004262, stmt = 170 },   # cents 0.4262
+  { effective = 2025-12-01, value = 0.003697, stmt = 171 },   # cents 0.3697
+  { effective = 2026-01-01, value = 0.003821, stmt = 172 },   # cents 0.3821
   { effective = 2026-02-01, value = 0.005553, stmt = 173 },
   { effective = 2026-03-01, value = 0.006113, stmt = 174 },
   { effective = 2026-04-01, value = 0.006140, stmt = 175 },
@@ -72,6 +86,11 @@ rule = "day_weighted"
 scope = "all"
 group = "delivery"
 entries = [
+  { effective = 2025-09-01, value = 0.00719, stmt = 164 },   # cents 0.719
+  { effective = 2025-10-01, value = 0.00612, stmt = 165 },   # cents 0.612
+  { effective = 2025-11-01, value = 0.01044, stmt = 166 },   # cents 1.044
+  { effective = 2025-12-01, value = 0.00572, stmt = 167 },   # cents 0.572
+  { effective = 2026-01-01, value = 0.00014, stmt = 168 },   # cents 0.014
   { effective = 2026-02-01, value =  0.00420, stmt = 169 },
   { effective = 2026-03-01, value =  0.00813, stmt = 170 },
   { effective = 2026-04-01, value =  0.01104, stmt = 171 },
@@ -89,6 +108,11 @@ rule = "to_date"
 scope = "all"
 group = "delivery"
 entries = [
+  { effective = 2025-09-15, value = -0.000079, stmt = 164 },   # cents (monthly bills): (0.0155) + 0.0070 + 0.0006 = (0.0079)
+  { effective = 2025-10-14, value =  0.001574, stmt = 165 },   # cents:  0.1560 + 0.0008 + 0.0006
+  { effective = 2025-11-12, value = -0.000409, stmt = 166 },   # cents: (0.0444) + 0.0029 + 0.0006
+  { effective = 2025-12-15, value = -0.000946, stmt = 167 },   # cents: (0.1006) + 0.0054 + 0.0006
+  { effective = 2026-01-14, value =  0.001360, stmt = 168 },   # cents:  0.1314 + 0.0048 - 0.0002
   { effective = 2026-02-01, value =  0.001360, stmt = 169 },   #  0.001314 + 0.000048 - 0.000002
   { effective = 2026-02-13, value = -0.005344, stmt = 170 },   # -0.005370 + 0.000028 - 0.000002
   { effective = 2026-03-17, value =  0.009202, stmt = 171 },   #  0.009231 - 0.000027 - 0.000002
@@ -106,6 +130,7 @@ rule = "day_weighted"
 scope = "all"
 group = "delivery"
 entries = [
+  { effective = 2025-08-01, value = 0.00141, stmt = 36 },   # cents 0.1410
   { effective = 2026-02-01, value =  0.00738, stmt = 37 },
   { effective = 2026-08-01, value = -0.00815, stmt = 38 },
 ]
@@ -116,6 +141,7 @@ rule = "day_weighted"
 scope = "all"
 group = "delivery"
 entries = [
+  { effective = 2025-06-01, value = 0.0, stmt = 17 },   # cents 0.0000
   { effective = 2026-02-01, value = -0.000112, stmt = 18 },
 ]
 
@@ -145,6 +171,7 @@ rule = "day_weighted"
 scope = "all"      # as AMP
 group = "delivery"
 entries = [
+  { effective = 2025-02-01, value = 0.0008, stmt = 6 },
   { effective = 2026-02-01, value = 0.0020, stmt = 7 },
 ]
 
@@ -154,6 +181,7 @@ rule = "day_weighted"
 scope = "all"
 group = "delivery"
 entries = [
+  { effective = 2025-04-01, value = 0.0011, stmt = 11 },   # 0.0002 + 0.0001 + 0.0003 + 0.0000 + 0.0001 + 0.0004
   { effective = 2025-12-01, value = 0.0015, stmt = 12 },   # 0.0003 + 0.0001 + 0.0006 + 0.0001 + 0.0000 + 0.0004
 ]
 
@@ -165,6 +193,8 @@ rule = "day_weighted"
 scope = "all"
 group = "delivery"
 entries = [
+  { effective = 2025-01-01, value = 0.000289, stmt = 5 },   # cents 0.0289
+  { effective = 2026-01-01, value = 0.000201, stmt = 6 },   # cents 0.0201
   { effective = 2026-02-01, value = 0.000201, stmt = 7 },
 ]
 
@@ -174,6 +204,7 @@ rule = "day_weighted"
 scope = "all"
 group = "delivery"
 entries = [
+  { effective = 2025-07-01, value = 0.0047, stmt = 16 },   # cents 0.47 (Clean Energy Fund; EE tracker and IEDR 0.00). No company part yet.
   { effective = 2026-01-01, value = 0.0039, stmt = 17 },
   { effective = 2026-03-01, value = 0.0039, stmt = 18 },
 ]
@@ -184,6 +215,7 @@ rule = "day_weighted"
 scope = "sc1_rate1, sc1_rate3"
 group = "delivery"
 entries = [
+  { effective = 2025-07-01, value = 0.0,    stmt = 16 },
   { effective = 2026-01-01, value = 0.0,    stmt = 17 },
   { effective = 2026-03-01, value = 0.0039, stmt = 18 },
 ]
@@ -195,6 +227,7 @@ scope = "sc1_rate4, riderz_rate1"
 group = "delivery"
 unit = "$/kW"
 entries = [
+  { effective = 2025-07-01, value = 0.0,  stmt = 16 },
   { effective = 2026-01-01, value = 0.0,  stmt = 17 },
   { effective = 2026-03-01, value = 0.85, stmt = 18 },
 ]

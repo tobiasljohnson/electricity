@@ -1,10 +1,25 @@
 # Tariff parameters. To change a rate, ADD a new [[table]] entry with a later
 # `effective` date; never edit old entries. Units: $ , $/kWh, $/kW-month.
-# Source: PSC No. 10 electric tariff (see SPEC.md for page references).
+# Source: PSC No. 10 electric tariff (see SPEC.md for page references). Entries effective before
+# 2026-02-01 come from the superseded ("cancelled") leaves on https://dps.ny.gov/electric-tariffs.
+# The rate structure (seasons, peak hours, holidays) was unchanged between the two sets; only the
+# amounts changed, on 2026-02-01 (Case 25-E-0072). Nothing earlier than 2025-01-01 is loaded.
 
-[[bpp]]                      # GR 26.3, per bill, not prorated
+[[bpp]]                      # GR 26.3, per bill, not prorated. Leaf 353 rev 4 (full-service bill, electric-only account)
+effective = 2021-02-01
+amount = 1.28
+
+[[bpp]]                      # GR 26.3. Leaf 353 rev 6
 effective = 2026-02-01
 amount = 1.80
+
+[[sc1_rate1]]                # Leaf 388 rev 21 (superseded), Case 22-E-0064
+effective = 2025-01-01
+customer_charge = 20.00
+summer_tier_kwh = 250
+summer_first = 0.16107
+summer_over = 0.18518
+nonsummer = 0.16107
 
 [[sc1_rate1]]                # PDF p. 616, Leaf 388
 effective = 2026-02-01
@@ -14,6 +29,13 @@ summer_first = 0.16402
 summer_over = 0.18858
 nonsummer = 0.16402
 
+[[sc1_rate3]]                # Leaf 389.1 rev 17 (superseded)
+effective = 2025-01-01
+customer_charge = 20.00
+onpeak_summer = 0.3523
+onpeak_nonsummer = 0.1305
+offpeak = 0.0249
+
 [[sc1_rate3]]                # PDF p. 618, Leaf 389.1
 effective = 2026-02-01
 customer_charge = 21.00
@@ -21,12 +43,26 @@ onpeak_summer = 0.2786
 onpeak_nonsummer = 0.1711
 offpeak = 0.0522
 
+[[sc1_rate4]]                # Leaf 389.2 rev 6 (superseded)
+effective = 2025-01-01
+customer_charge = 29.00
+onpeak_kw_summer = 25.36
+onpeak_kw_nonsummer = 19.50
+offpeak_kw = 7.48
+
 [[sc1_rate4]]                # PDF p. 619, Leaf 389.2
 effective = 2026-02-01
 customer_charge = 31.00
 onpeak_kw_summer = 27.35
 onpeak_kw_nonsummer = 21.04
 offpeak_kw = 7.17
+
+[[riderz_rate1]]             # Leaf 327.3 rev 10 (superseded)
+effective = 2025-01-01
+customer_charge = 20.00
+onpeak_kw_summer = 29.66
+onpeak_kw_nonsummer = 22.80
+offpeak_kw = 10.00
 
 [[riderz_rate1]]             # PDF p. 486, Leaf 327.3
 effective = 2026-02-01

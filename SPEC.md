@@ -67,7 +67,7 @@ Column meaning depends on the code:
 
 Use a YAML (or similar) file listing each plan's parameters, each set with an effective date, so that a rate change means adding an entry, not editing code. The engine should pick the entry in effect for each period and apply GR 10.5.1 proration if a rate change falls inside a period (see Proration below).
 
-Current values:
+Current values (effective 2026-02-01). **Earlier values** are in `data/tariff.toml` from the superseded leaves on the DPS site, effective 2025-01-01 through 2026-01-31: Rate I customer charge $20.00 and 16.107¢ / 18.518¢ (summer over 250 kWh); Rate III $20.00, on-peak 35.23¢ summer / 13.05¢ non-summer, off-peak 2.49¢; Rate IV $29.00, on-peak $25.36 summer / $19.50 non-summer, off-peak $7.48/kW; Rider Z Rate I $20.00, $29.66 / $22.80 / $10.00. The rate structure (seasons, hours, holidays) did not change, only the amounts. Nothing before 2025-01-01 is loaded.
 
 **SC 1 Rate I** (PDF p. 616, Leaf 388)
 - Customer charge: $21.00/month
@@ -89,7 +89,7 @@ Current values:
 - On-peak demand (weekdays excluding holidays, noon–8 PM): summer $30.68/kW; non-summer $23.60/kW
 - Off-peak demand (all other hours): $10.06/kW all year
 
-**Billing and Payment Processing charge** (GR 26.3): $1.80 per bill. This is the same for every plan and is not prorated.
+**Billing and Payment Processing charge** (GR 26.3): $1.80 per bill from 2026-02-01 ($1.28 before; Leaf 353 rev 4). This is the same for every plan and is not prorated.
 
 **Holidays** (Rate IV on-peak and Rider Z on-peak only): New Year's Day (Jan 1), Memorial Day (last Monday in May), Independence Day (July 4), Labor Day (first Monday in September), Thanksgiving (fourth Thursday in November), Christmas (Dec 25). Generate these by rule for any year. The tariff does not mention observed-day shifts when a holiday falls on a weekend, so apply none. Rate III has **no** holiday exclusions.
 
@@ -101,6 +101,10 @@ Everything on a real bill beyond tariff delivery and MSC supply comes from Con E
 - **Supply side:** supply (MSC file) + Adjustment Factor – MSC (NYC residential, "all other customers") + Clean Energy Standard Supply Surcharge (CESS) + Merchant Function Charge (SC 1 total).
 - **GRT:** a percentage on each side separately (City of New York residential: delivery 4.7940% → 4.8562% from Apr 1 2026, plus 0.2677% for to-dates Jun 2 – Jul 30 2026; supply 2.4066%), then **sales tax** 4.5% on everything including the GRT. Sales tax is not a Con Ed statement; its value is measured from bills.
 - Rider Z: AMP, DLM and EV Make-Ready statements list "SC 1 – Rates I, II, III and IV" without naming Rider Z; Rider Z is assumed to pay them too (GR 26.6, 26.10, 26.11 apply them to all customers). *Assumption.*
+
+**Statements filed before Feb 2026 are printed in cents per kWh** (later ones in dollars); `statements.toml` holds dollars and each old entry carries the printed cents in a comment. Use the *monthly-bill* column, not the bi-monthly one. Before 2026-02-01 the supply adjustment was the sum of two tables, Adjustment Factor – MSC I (monthly reconciliation) and – MSC II (hedging/rebills, "all other customers"); the NYC-residential values for both are summed into the one `afmsc` series. Check: #170's sum (−0.4642 + −0.7812 cents) equals the first merged statement #171 (−0.012454 $/kWh). PDF text extraction scrambles the column order of these tables; read the rendered table.
+
+**Not validated against bills:** Oct 2025 – Jan 2026 are priced from statements and superseded tariff leaves, but no bills before Feb 9 2026 are available, so unlike Feb–Sep 2026 they have not been reproduced. The statement values pass unit and consistency checks (tests/test_statements.py, `Backfill`). October 2025 has statements and tariffs but no usage data (usage starts Nov 1 2025). SBC before Mar 2026 was a single per-kWh amount for all plans (0.47¢ from Jul 1 2025, 0.39¢ from Jan 1 2026).
 
 **Which statement value applies to a bill** (`rule` in the file; verified on six bills):
 - `to_date`: the statement in effect on the bill's TO date. The tariff says so for the Adjustment Factors – MSC (GR 25.2.4) and – MAC (GR 26.1.3); the GRT statement says "to-date". The "TO date" of a calendar month is its last day.
@@ -226,7 +230,7 @@ These match the user's manual pulls from the online calculator.
 4. Confirm the per-kW proration interpretation (days/30), ideally against a real demand-billed bill if one can be found.
 5. Decide the report format (the user has ideas; deferred until the engine works).
 6. ~~Obtain Con Ed's published statements to check whether adjustments differ by plan.~~ Done (section 4). Only the SBC differs. Still open: the meaning of "monthly maximum demand" for the per-kW SBC (ask Con Ed), and whether Rider Z pays AMP/DLM/EV Make-Ready.
-7. Tariff entries before 2026-02-01 (Nov 2025 – Jan 2026 are skipped), and statements for months after `as_of`. The statements' NYC residential columns are hard-wired (zone, residential use); other zones need other columns.
+7. ~~Tariff entries and statements before 2026-02-01.~~ Done back to 2025-01-01 (tariff) and 2025-10-01 (statements; most series reach further back). Still open: statements for months after `as_of`, and bills to validate Oct 2025 – Jan 2026. The statements' NYC residential columns are hard-wired (zone, residential use); other zones need other columns.
 
 ## Background notes
 

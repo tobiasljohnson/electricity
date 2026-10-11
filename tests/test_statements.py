@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from conedrates.engine import Period, price_period
-from conedrates.loaders import TariffNotInEffect, Usage, load_tariff
+from conedrates.engine import PLANS, Period, calendar_months, price_period
+from conedrates.loaders import TariffNotInEffect, Usage, load_tariff, tariff_entry
 from conedrates.statements import StatementNotInEffect, load_statements
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -38,7 +38,7 @@ class Lookup(unittest.TestCase):
 
     def test_uncovered_day_raises(self):
         with self.assertRaises(StatementNotInEffect):
-            self.st.value("afmsc", Period.from_bill(D(2026, 1, 12), D(2026, 2, 10)))   # first AF-MSC is Feb 13
+            self.st.value("afmsc", Period.from_bill(D(2025, 8, 5), D(2025, 9, 5)))     # first AF-MSC on file is Sep 15 2025
         self.assertTrue(issubclass(StatementNotInEffect, TariffNotInEffect))           # run() skips such periods
 
     def test_scope_separates_demand_and_energy_plans(self):
@@ -46,6 +46,68 @@ class Lookup(unittest.TestCase):
         self.assertNotIn("sbc_company_kw", self.st.keys("sc1_rate1", "delivery"))
         self.assertIn("sbc_company_kw", self.st.keys("riderz_rate1", "delivery"))
         self.assertNotIn("sbc_company_kwh", self.st.keys("sc1_rate4", "delivery"))
+
+
+class Backfill(unittest.TestCase):
+    """Oct 2025 - Jan 2026: older statements (printed in cents) and superseded tariff leaves."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.st = load_statements(ROOT / "data" / "statements.toml")
+        cls.tariff = load_tariff(ROOT / "data" / "tariff.toml")
+
+    def test_every_month_from_oct_2025_is_covered_for_every_plan(self):
+        for period in calendar_months(D(2025, 10, 1), D(2026, 9, 30)):
+            for plan in PLANS:
+                with self.subTest(month=f"{period.start:%Y-%m}", plan=plan):
+                    tariff_entry(self.tariff, plan, period.start)
+                    tariff_entry(self.tariff, "bpp", period.start)
+                    for group in ("delivery", "supply"):
+                        for key in self.st.keys(plan, group):
+                            self.st.value(key, period)
+                    for key in ("grt_delivery_pct", "grt_supply_pct"):
+                        self.st.value(key, period)
+
+    def test_cents_are_converted_to_dollars(self):
+        # MAC #165 prints 0.612 CENTS per kWh; the series holds dollars.
+        v, used = self.st.value("mac", Period.calendar_month(D(2025, 10, 1), D(2025, 11, 1)))
+        self.assertEqual((v, used), (0.00612, [165]))
+
+    def test_day_weighted_blend_across_oct_nov_2025(self):
+        # usage days Oct 20..Nov 9: 12 days under MAC #165 (0.00612), 9 under #166 (0.01044)
+        v, used = self.st.value("mac", Period(D(2025, 10, 20), D(2025, 11, 10)))
+        self.assertAlmostEqual(v, (12 * 0.00612 + 9 * 0.01044) / 21, places=9)
+        self.assertEqual(used, [165, 166])
+
+    def test_supply_adjustment_is_msc_i_plus_msc_ii_before_february_2026(self):
+        # #168 (eff 11/12/2025): MSC I 0.8803 cents + MSC II 0.8358 cents = 1.7161 cents
+        v, used = self.st.value("afmsc", Period.calendar_month(D(2025, 11, 1), D(2025, 12, 1)))   # Nov 30
+        self.assertEqual((v, used), (0.017161, [168]))
+
+    def test_old_two_part_total_equals_the_first_merged_february_statement(self):
+        jan = self.st.value("afmsc", Period.calendar_month(D(2026, 1, 20), D(2026, 2, 1)))        # to-date Jan 31: #170
+        feb = self.st.value("afmsc", Period(D(2026, 2, 1), D(2026, 2, 6)))                        # to-date Feb 5: #171
+        self.assertEqual((jan[0], jan[1]), (-0.012454, [170]))
+        self.assertEqual((feb[0], feb[1]), (-0.012454, [171]))
+
+    def test_old_tariff_rates_and_bpp(self):
+        dec = D(2025, 12, 1)
+        self.assertEqual(tariff_entry(self.tariff, "bpp", dec)["amount"], 1.28)
+        self.assertEqual(tariff_entry(self.tariff, "bpp", D(2026, 2, 1))["amount"], 1.80)
+        r1 = tariff_entry(self.tariff, "sc1_rate1", dec)
+        self.assertEqual((r1["customer_charge"], r1["summer_first"], r1["summer_over"]), (20.00, 0.16107, 0.18518))
+        self.assertEqual(tariff_entry(self.tariff, "sc1_rate1", D(2026, 2, 1))["customer_charge"], 21.00)
+        self.assertEqual(tariff_entry(self.tariff, "sc1_rate4", dec)["offpeak_kw"], 7.48)
+        self.assertEqual(tariff_entry(self.tariff, "riderz_rate1", dec)["onpeak_kw_summer"], 29.66)
+
+    def test_sbc_before_march_2026_is_per_kwh_for_every_plan(self):
+        december = Period.calendar_month(D(2025, 12, 1), D(2026, 1, 1))
+        for plan in PLANS:
+            with self.subTest(plan=plan):
+                self.assertEqual(self.st.value("sbc_nyserda", december)[0], 0.0047)     # Dec 2025: stmt #16
+                v = self.st.value("sbc_company_kwh", december)[0] if plan in ("sc1_rate1", "sc1_rate3") \
+                    else self.st.value("sbc_company_kw", december)[0]
+                self.assertEqual(v, 0.0)                                                # company part starts Mar 2026
 
 
 class SyntheticEngine(unittest.TestCase):
