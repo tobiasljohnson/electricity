@@ -23,8 +23,20 @@ def load_usage(path):
     Columns: TYPE, DATE, START TIME, END TIME, USAGE (kWh), NOTES. Times are
     local wall-clock; END TIME is the last minute of the interval (00:14 for a
     00:00 start), so interval length = END - START + 1 minute.
+
+    Anything before the header line ("TYPE,DATE,START TIME,...") is skipped.
     """
-    df = pd.read_csv(path, encoding="utf-8-sig", dtype={"NOTES": "string"})
+    with open(path, 'r', encoding="utf-8-sig") as processed_file:
+        current_pos = processed_file.tell()
+        line = processed_file.readline()
+        while line and not line.lstrip().startswith("TYPE,DATE"):
+            current_pos = processed_file.tell()
+            line = processed_file.readline()
+        if not line:
+            raise ValueError(f"no header line starting with 'TYPE,DATE' found in {path}")
+        processed_file.seek(current_pos)
+        df = pd.read_csv(processed_file, dtype={"NOTES": "string"})
+
     df.columns = [c.strip() for c in df.columns]
     start = pd.to_datetime(df["DATE"] + " " + df["START TIME"])
     end = pd.to_datetime(df["DATE"] + " " + df["END TIME"])

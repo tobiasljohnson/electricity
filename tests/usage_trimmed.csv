@@ -1,0 +1,9 @@
+﻿TYPE,DATE,START TIME,END TIME,USAGE (kWh),NOTES
+Electric usage,2021-03-01,00:00,00:14,0.09
+Electric usage,2021-03-01,00:15,00:29,0.15
+Electric usage,2021-03-01,00:30,00:44,0.08
+Electric usage,2021-03-01,00:45,00:59,0.19
+Electric usage,2021-03-01,00:45,00:59,0.10
+Electric usage,2021-03-01,01:00,01:14,0.47
+Electric usage,2021-03-01,01:15,01:29,0.09
+Electric usage,2021-03-01,01:30,01:44,0.09

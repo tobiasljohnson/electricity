@@ -1,0 +1,20 @@
+﻿
+Name,SIGRID UNDSET
+Address,"97 Columbia Hts., BROOKLYN NY 11201"
+Account Number,XXXXX-X1000-6
+Service,1234567890
+Meter,012345678E
+
+TYPE,DATE,START TIME,END TIME,USAGE (kWh),NOTES
+Electric usage,2024-05-06,00:00,00:14,0.11
+Electric usage,2024-05-06,00:15,00:29,0.22
+Electric usage,2024-05-06,00:30,00:44,0.53
+Electric usage,2024-05-06,00:45,00:59,0.08
+Electric usage,2024-05-06,01:00,01:14,0.00
+Electric usage,2024-05-06,01:15,01:29,0.01
+Electric usage,2024-05-06,01:30,01:44,0.07
+Electric usage,2024-05-06,01:45,01:59,0.01
+Electric usage,2024-05-06,02:00,02:14,0.07
+Electric usage,2024-05-06,02:15,02:29,1.03
+Electric usage,2024-05-06,02:30,02:44,0.53
+Electric usage,2024-05-06,02:45,02:59,0.03
