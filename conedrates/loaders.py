@@ -70,7 +70,8 @@ def load_msc(path, zone="J", tension="low"):
     Returns DataFrame[code, start, end (inclusive), all, on, off], deduplicated,
     limited to the three codes used and to regular (<= 35 day) cycles.
     """
-    rows = list(csv.reader(open(path, encoding="utf-8-sig")))
+    with open(path, encoding="utf-8-sig") as f:
+        rows = list(csv.reader(f))
     head = [h.strip() for h in rows[0]]
     if head[:3] == ["SC AND", "FROM DT", "TO  DT"] and "ON PEAK" in head and rows[1][4].strip() != "LT-ZONE H":
         cols = {"all": head.index("ALL HOURS"), "on": head.index("ON PEAK"), "off": head.index("OFF PEAK")}
