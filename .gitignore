@@ -15,3 +15,8 @@ __pycache__/
 electric-tariff.pdf
 statements
 .claude/
+
+# Personal notes for Claude, and editor backup files
+CLAUDE.local.md
+*~
+\#*\#
