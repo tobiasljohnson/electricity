@@ -15,7 +15,7 @@ Here's a very quick description of the plans. All plans include a charge for *de
 
 ## Downloading your data
 
-Go to https://coned.com and log into your Con Ed account. At the top is a menu *Account & Billing*, and inside the menu is a link *Energy Use*. Follow this link. Then click on *Green Button-Download my data*. Choose *Export usage for a range of days* and choose time period. You can choose any amount of time up to a year in length. Choose CSV for format. Click on export and your data will download.
+Go to https://coned.com and log into your Con Ed account. At the top is a menu *Account & Billing*, and inside the menu is a link *Energy Use*. Follow this link. Then click on *Green Button-Download my data*. Choose *Export usage for a range of days* and choose a time period. You can choose any amount of time up to a year in length. Choose CSV for format. Click on export and your data will download.
 
 ## Running the calculator
 
